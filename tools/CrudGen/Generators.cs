@@ -117,7 +117,7 @@ public static class Generators
 
         foreach (var unique in e.Uniques)
         {
-            codes.AppendLine($"    public static readonly ErrorCode {unique.Property}AlreadyExists = new(\"{s.Prefix}_{Naming.UpperSnake(unique.Property)}_ALREADY_EXISTS\", \"A {s.Spaced} with this {Naming.Spaced(unique.Property)} already exists.\", ErrorKind.Conflict);");
+            codes.AppendLine($"    public static readonly ErrorCode {unique.Property}AlreadyExists = new(\"{s.Prefix}_{Naming.UpperSnake(unique.Property)}_ALREADY_EXISTS\", \"{Naming.AOrAn(s.Spaced)} {s.Spaced} with this {Naming.Spaced(unique.Property)} already exists.\", ErrorKind.Conflict);");
             maps.AppendLine($"        Map(\"{unique.ConstraintName}\", {s.Name}Errors.{unique.Property}AlreadyExists, field: \"{Naming.Camel(unique.Property)}\");");
         }
 

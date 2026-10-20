@@ -10,43 +10,43 @@ namespace FlixLocadora.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [Produces("application/json")]
-public sealed class AuthController(IAccountService accounts) : ControllerBase
+public sealed class AuthController(IAuthService auth) : ControllerBase
 {
     /// <summary>Creates an account with the default role (Auth:DefaultRole, Operator).</summary>
     [HttpPost("register")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status201Created)]
     public async Task<ActionResult<ApiResponse<UserResponse>>> Register(RegisterRequest request, CancellationToken ct)
-        => ResponseTreatment.General(await accounts.RegisterAsync(request, ct), StatusCodes.Status201Created);
+        => ResponseTreatment.General(await auth.RegisterAsync(request, ct), StatusCodes.Status201Created);
 
     /// <summary>Checks the password (with lockout after 5 failures) and returns the access token.</summary>
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<ActionResult<ApiResponse<TokenResponse>>> Login(LoginRequest request, CancellationToken ct)
-        => ResponseTreatment.General(await accounts.LoginAsync(request, ct));
+        => ResponseTreatment.General(await auth.LoginAsync(request, ct));
 
     /// <summary>The user of the token — the first check that a token works.</summary>
     [HttpGet("me")]
     [Authorize(Policy = Policies.Read)]
     public async Task<ActionResult<ApiResponse<UserResponse>>> Me(CancellationToken ct)
-        => ResponseTreatment.General(await accounts.MeAsync(ct));
+        => ResponseTreatment.General(await auth.MeAsync(ct));
 
     /// <summary>Creates a role (admins only).</summary>
     [HttpPost("roles")]
     [Authorize(Policy = Policies.Admin)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     public async Task<ActionResult<ApiResponse>> CreateRole(CreateRoleRequest request, CancellationToken ct)
-        => ResponseTreatment.General(await accounts.CreateRoleAsync(request, ct), StatusCodes.Status201Created);
+        => ResponseTreatment.General(await auth.CreateRoleAsync(request, ct), StatusCodes.Status201Created);
 
     /// <summary>Gives a role to a user (admins only).</summary>
     [HttpPost("users/{email}/roles/{role}")]
     [Authorize(Policy = Policies.Admin)]
     public async Task<ActionResult<ApiResponse<UserResponse>>> AddToRole(string email, string role, CancellationToken ct)
-        => ResponseTreatment.General(await accounts.AddToRoleAsync(email, role, ct));
+        => ResponseTreatment.General(await auth.AddToRoleAsync(email, role, ct));
 
     /// <summary>Takes a role from a user (admins only).</summary>
     [HttpDelete("users/{email}/roles/{role}")]
     [Authorize(Policy = Policies.Admin)]
     public async Task<ActionResult<ApiResponse<UserResponse>>> RemoveFromRole(string email, string role, CancellationToken ct)
-        => ResponseTreatment.General(await accounts.RemoveFromRoleAsync(email, role, ct));
+        => ResponseTreatment.General(await auth.RemoveFromRoleAsync(email, role, ct));
 }

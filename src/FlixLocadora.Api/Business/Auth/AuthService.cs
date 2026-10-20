@@ -5,7 +5,7 @@ using FlixLocadora.Api.Data.Auth;
 
 namespace FlixLocadora.Api.Business.Auth;
 
-public interface IAccountService : IService
+public interface IAuthService : IService
 {
     Task<ApiResponse<UserResponse>> RegisterAsync(RegisterRequest request, CancellationToken ct);
 
@@ -25,14 +25,14 @@ public interface IAccountService : IService
 /// base projects: no cookie sign-in in an API (CheckPasswordSignInAsync instead of PasswordSignInAsync), no token
 /// in a non-HttpOnly cookie, role management restricted to admins (it was open to anyone), no blocking .Result.
 /// </summary>
-public sealed class AccountService(
+public sealed class AuthService(
     UserManager<AppUser> users,
     SignInManager<AppUser> signIn,
     RoleManager<IdentityRole> roles,
     ITokenService tokens,
     ICurrentUser currentUser,
     IOptions<AuthOptions> options,
-    TimeProvider clock) : IAccountService
+    TimeProvider clock) : IAuthService
 {
     public async Task<ApiResponse<UserResponse>> RegisterAsync(RegisterRequest request, CancellationToken ct)
     {

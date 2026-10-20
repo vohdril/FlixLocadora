@@ -24,6 +24,9 @@ public static partial class Naming
     /// <summary>PurchaseOrder → purchase order.</summary>
     public static string Spaced(string name) => Words().Replace(name, " $1").ToLowerInvariant();
 
+    /// <summary>"A" or "An" at the start of a message, by the first letter: An account, A movie.</summary>
+    public static string AOrAn(string word) => word.Length > 0 && "aeiou".Contains(char.ToLowerInvariant(word[0])) ? "An" : "A";
+
     /// <summary>Name → name (JSON field of the envelope).</summary>
     public static string Camel(string name) => name.Length == 0 ? name : char.ToLowerInvariant(name[0]) + name[1..];
 
