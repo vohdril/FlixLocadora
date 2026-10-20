@@ -1,0 +1,19 @@
+# Optional: SQL Server in a container (an alternative to LocalDB, e.g. on Linux/macOS or in CI).
+#   1. create infra/.env with  MSSQL_SA_PASSWORD=<a strong password>   (the file is git-ignored)
+#   2. docker compose -f infra/docker-compose.yml up -d
+#   3. dotnet user-secrets set ConnectionStrings:AppDb "Server=localhost,14333;Database=FlixLocadora;User Id=sa;Password=<the same password>;TrustServerCertificate=True" --project src/FlixLocadora.Api
+#   4. ./scripts/db-up.ps1 -Seed
+# For the tests: TEST_DB_CONNECTION="Server=localhost,14333;User Id=sa;Password=...;TrustServerCertificate=True"
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in infra/.env}
+    ports:
+      - "14333:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+
+volumes:
+  sqldata:

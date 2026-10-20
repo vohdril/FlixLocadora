@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    The whole API in one project. The Decco layers are folders:
+      SolutionLayer → Program.cs, Infra/, Controllers/
+      BusinessLayer → Business/ (one folder per feature + Common/)
+      DataLayer     → Data/ (Generated/ is owned by scripts/scaffold.ps1)
+    The direction of the dependencies is guarded by tests/…/Architecture.
+  -->
+  <PropertyGroup>
+    <RootNamespace>FlixLocadora.Api</RootNamespace>
+    <UserSecretsId>flixlocadora-api-dev</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <!-- Source generator: the converters' code is generated at compile time (no reflection at runtime). -->
+    <PackageReference Include="Riok.Mapperly" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <!-- Design-time only (dotnet ef dbcontext scaffold / migrations); not shipped with the app. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- T4 templates are read by `dotnet ef dbcontext scaffold`; the build never transforms or copies them. -->
+  <ItemGroup>
+    <None Remove="CodeTemplates\**" />
+    <None Include="CodeTemplates\**" CopyToOutputDirectory="Never" />
+  </ItemGroup>
+
+</Project>

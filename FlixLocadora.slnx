@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/SolutionLayer/">
+    <Project Path="src/FlixLocadora.Api/FlixLocadora.Api.csproj" />
+  </Folder>
+  <Folder Name="/TestLayer/">
+    <Project Path="tests/FlixLocadora.Tests/FlixLocadora.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tools/">
+    <Project Path="tools/CrudGen/CrudGen.csproj" />
+    <Project Path="tools/FlixLocadora.Database/FlixLocadora.Database.csproj" />
+  </Folder>
+</Solution>

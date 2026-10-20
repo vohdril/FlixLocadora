@@ -1,0 +1,25 @@
+# Manual tests (Visual Studio / VS Code REST Client / Rider). Start the API with the "http" profile first:
+#   dotnet run --project src/FlixLocadora.Api --launch-profile http
+# The CRUD controllers created by CrudGen start [AllowAnonymous]: no token is needed for them yet.
+
+@baseUrl = http://localhost:5406
+
+### Health (database included)
+GET {{baseUrl}}/health
+
+### Register (default role: Operator)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{ "email": "dev.user@example.com", "password": "Senha!Forte123" }
+
+### Login → copy data.accessToken
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "dev.user@example.com", "password": "Senha!Forte123" }
+
+### Who am I (Bearer token)
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{login.response.body.$.data.accessToken}}

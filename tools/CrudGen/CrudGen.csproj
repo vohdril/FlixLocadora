@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    CrudGen: generates the CRUD slices (contracts, database rules, constraint errors, validators, converter,
+    service, controller, smoke tests) from the SAME model `dotnet ef dbcontext scaffold` reads — the database
+    behind ConnectionStrings:AppDb. It does not reference the API: it keeps working while old code no longer
+    compiles (the moment of a domain swap). Shares the API's UserSecretsId.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>CrudGen</RootNamespace>
+    <UserSecretsId>flixlocadora-api-dev</UserSecretsId>
+    <!-- SqlServerDesignTimeServices lives in an ".Internal" namespace (EF1001); EF Core Power Tools uses it the same way. -->
+    <NoWarn>$(NoWarn);EF1001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
+  </ItemGroup>
+
+</Project>

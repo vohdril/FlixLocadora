@@ -1,0 +1,15 @@
+# THE SWITCH OF THE AUTHENTICATION.
+# Every endpoint open to anonymous callers must start with one of the prefixes below (ArchitectureTests).
+# At the go-live: delete the testing-phase lines AND the [AllowAnonymous] lines of those controllers.
+# The security posture changes here, in code review — never through a configuration flag.
+# scripts/crudgen.ps1 adds the routes of the slices it creates to the testing phase.
+
+# testing phase — remove at go-live:
+
+# always anonymous:
+api/auth/register
+api/auth/login
+health
+openapi/
+scalar
+{*path:nonfile}

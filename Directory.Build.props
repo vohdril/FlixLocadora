@@ -1,0 +1,26 @@
+<Project>
+
+  <!--
+    Properties shared by every project of the solution.
+    net10.0 = current LTS (support until Nov/2028).
+    GenerateDocumentationFile: the XML comments of controllers and contracts become descriptions in the
+    OpenAPI document (.NET 10 source generator, no extra code). CS1591 is silenced so that not every
+    public member needs a comment.
+    Warnings are errors, except:
+      ASP0026  — "[Authorize] overridden by [AllowAnonymous]": intentional while the controllers are anonymous;
+                 it stays visible as the reminder that authentication is not enforced yet (planning, 05 §4).
+      NU1901-4 — NuGet audit: a new advisory must be seen (and pinned in Directory.Packages.props), not break
+                 the build of whoever clones the project.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);ASP0026;NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+  </PropertyGroup>
+
+</Project>

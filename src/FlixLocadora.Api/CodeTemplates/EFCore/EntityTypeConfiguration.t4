@@ -1,0 +1,270 @@
+<#@ template hostSpecific="true" #>
+<#@ assembly name="Microsoft.EntityFrameworkCore" #>
+<#@ assembly name="Microsoft.EntityFrameworkCore.Design" #>
+<#@ assembly name="Microsoft.EntityFrameworkCore.Relational" #>
+<#@ assembly name="Microsoft.Extensions.DependencyInjection.Abstractions" #>
+<#@ parameter name="EntityType" type="Microsoft.EntityFrameworkCore.Metadata.IEntityType" #>
+<#@ parameter name="Options" type="Microsoft.EntityFrameworkCore.Scaffolding.ModelCodeGenerationOptions" #>
+<#@ parameter name="NamespaceHint" type="System.String" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="Microsoft.EntityFrameworkCore" #>
+<#@ import namespace="Microsoft.EntityFrameworkCore.Design" #>
+<#@ import namespace="Microsoft.Extensions.DependencyInjection" #>
+<#
+    // Solution template, based on the per-entity block of the EF Core 10 DbContext.t4:
+    //  - one IEntityTypeConfiguration<T> per entity, applied by ApplyConfigurationsFromAssembly in the context;
+    //  - ToTable/ToView ALWAYS explicit: the context has no DbSet properties, so EF would otherwise map the
+    //    entity to its CLR type name (the "Anomalium" trap);
+    //  - a partial OnConfigurePartial hook for hand-written configuration (Data/Partials).
+    // EF writes these files next to the context; scripts/scaffold.ps1 moves them to Configurations/.
+    if (EntityType.IsSimpleManyToManyJoinEntityType())
+    {
+        return "";
+    }
+
+    var services = (IServiceProvider)Host;
+    var annotationCodeGenerator = services.GetRequiredService<IAnnotationCodeGenerator>();
+    var code = services.GetRequiredService<ICSharpHelper>();
+
+    var usings = new List<string>
+    {
+        "System",
+        "System.Collections.Generic",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Metadata.Builders"
+    };
+
+    if (!string.IsNullOrEmpty(Options.ModelNamespace))
+    {
+        usings.Add(Options.ModelNamespace);
+    }
+
+    var configurationNamespace = string.IsNullOrEmpty(NamespaceHint) ? "Configurations" : NamespaceHint + ".Configurations";
+#>
+namespace <#= configurationNamespace #>;
+
+public partial class <#= EntityType.Name #>Configuration : IEntityTypeConfiguration<<#= EntityType.Name #>>
+{
+    public void Configure(EntityTypeBuilder<<#= EntityType.Name #>> builder)
+    {
+<#
+    // ToTable/ToView calls that only carry names are replaced by the explicit call below; calls with a table
+    // builder (triggers, comments, temporal tables) are kept and then already carry the name.
+    var entityTypeFluentApiCalls = EntityType.GetFluentApiCalls(annotationCodeGenerator)
+        ?.FilterChain(c => !((c.Method == "ToTable" || c.Method == "ToView") && c.Arguments.All(a => a is null || a is string)));
+
+    var mappedByChain = false;
+    for (var call = entityTypeFluentApiCalls; call != null; call = call.ChainedCall)
+    {
+        if ((call.Method == "ToTable" || call.Method == "ToView") && call.Arguments.FirstOrDefault() is string)
+        {
+            mappedByChain = true;
+        }
+    }
+
+    // The schema is written only when it differs from the model default (HasDefaultSchema in the context),
+    // so that it stays consistent with the calls kept from the chain above.
+    var defaultSchema = EntityType.Model.GetDefaultSchema();
+    var tableName = EntityType.GetTableName();
+    var viewName = EntityType.GetViewName();
+    if (!mappedByChain && tableName != null)
+    {
+        var schema = EntityType.GetSchema();
+#>
+        builder.ToTable(<#= code.Literal(tableName) #><#= schema != null && schema != defaultSchema ? ", " + code.Literal(schema) : "" #>);
+<#
+    }
+    else if (!mappedByChain && viewName != null)
+    {
+        var viewSchema = EntityType.GetViewSchema();
+#>
+        builder.ToView(<#= code.Literal(viewName) #><#= viewSchema != null && viewSchema != defaultSchema ? ", " + code.Literal(viewSchema) : "" #>);
+<#
+    }
+
+    var key = EntityType.FindPrimaryKey();
+    if (key != null)
+    {
+        var keyFluentApiCalls = key.GetFluentApiCalls(annotationCodeGenerator);
+        if (keyFluentApiCalls != null || !key.IsHandledByConvention())
+        {
+            if (keyFluentApiCalls != null)
+            {
+                usings.AddRange(keyFluentApiCalls.GetRequiredUsings());
+            }
+#>
+        builder.HasKey(<#= code.Lambda(key.Properties, "e") #>)<#= code.Fragment(keyFluentApiCalls, indent: 3) #>;
+<#
+        }
+    }
+
+    if (entityTypeFluentApiCalls != null)
+    {
+        usings.AddRange(entityTypeFluentApiCalls.GetRequiredUsings());
+#>
+        builder<#= code.Fragment(entityTypeFluentApiCalls, indent: 3) #>;
+<#
+    }
+
+    var firstIndex = true;
+    foreach (var index in EntityType.GetIndexes())
+    {
+        if (firstIndex)
+        {
+            WriteLine("");
+            firstIndex = false;
+        }
+
+        var indexFluentApiCalls = index.GetFluentApiCalls(annotationCodeGenerator);
+        if (indexFluentApiCalls != null)
+        {
+            usings.AddRange(indexFluentApiCalls.GetRequiredUsings());
+        }
+#>
+        builder.HasIndex(<#= code.Lambda(index.Properties, "e") #>, <#= code.Literal(index.GetDatabaseName()) #>)<#= code.Fragment(indexFluentApiCalls, indent: 3) #>;
+<#
+    }
+
+    var firstProperty = true;
+    foreach (var property in EntityType.GetProperties())
+    {
+        var propertyFluentApiCalls = property.GetFluentApiCalls(annotationCodeGenerator)
+            ?.FilterChain(c => !(c.Method == "IsRequired" && Options.UseNullableReferenceTypes && !property.ClrType.IsValueType));
+        if (propertyFluentApiCalls == null)
+        {
+            continue;
+        }
+
+        usings.AddRange(propertyFluentApiCalls.GetRequiredUsings());
+
+        if (firstProperty)
+        {
+            WriteLine("");
+            firstProperty = false;
+        }
+#>
+        builder.Property(e => e.<#= property.Name #>)<#= code.Fragment(propertyFluentApiCalls, indent: 3) #>;
+<#
+    }
+
+    foreach (var foreignKey in EntityType.GetForeignKeys())
+    {
+        var foreignKeyFluentApiCalls = foreignKey.GetFluentApiCalls(annotationCodeGenerator);
+        if (foreignKeyFluentApiCalls == null)
+        {
+            continue;
+        }
+
+        usings.AddRange(foreignKeyFluentApiCalls.GetRequiredUsings());
+        WriteLine("");
+#>
+        builder.HasOne(d => d.<#= foreignKey.DependentToPrincipal.Name #>).<#= foreignKey.IsUnique ? "WithOne" : "WithMany" #>(<#= foreignKey.PrincipalToDependent != null ? $"p => p.{foreignKey.PrincipalToDependent.Name}" : "" #>)<#= code.Fragment(foreignKeyFluentApiCalls, indent: 3) #>;
+<#
+    }
+
+    foreach (var skipNavigation in EntityType.GetSkipNavigations().Where(n => n.IsLeftNavigation()))
+    {
+        WriteLine("");
+
+        var left = skipNavigation.ForeignKey;
+        var leftFluentApiCalls = left.GetFluentApiCalls(annotationCodeGenerator, useStrings: true);
+        var right = skipNavigation.Inverse.ForeignKey;
+        var rightFluentApiCalls = right.GetFluentApiCalls(annotationCodeGenerator, useStrings: true);
+        var joinEntityType = skipNavigation.JoinEntityType;
+
+        if (leftFluentApiCalls != null)
+        {
+            usings.AddRange(leftFluentApiCalls.GetRequiredUsings());
+        }
+
+        if (rightFluentApiCalls != null)
+        {
+            usings.AddRange(rightFluentApiCalls.GetRequiredUsings());
+        }
+#>
+        builder.HasMany(d => d.<#= skipNavigation.Name #>).WithMany(p => p.<#= skipNavigation.Inverse.Name #>)
+            .UsingEntity<Dictionary<string, object>>(
+                <#= code.Literal(joinEntityType.Name) #>,
+                r => r.HasOne<<#= right.PrincipalEntityType.Name #>>().WithMany()<#= code.Fragment(rightFluentApiCalls, indent: 5) #>,
+                l => l.HasOne<<#= left.PrincipalEntityType.Name #>>().WithMany()<#= code.Fragment(leftFluentApiCalls, indent: 5) #>,
+                j =>
+                {
+<#
+        var joinKey = joinEntityType.FindPrimaryKey();
+        var joinKeyFluentApiCalls = joinKey.GetFluentApiCalls(annotationCodeGenerator);
+
+        if (joinKeyFluentApiCalls != null)
+        {
+            usings.AddRange(joinKeyFluentApiCalls.GetRequiredUsings());
+        }
+#>
+                    j.HasKey(<#= code.Arguments(joinKey.Properties.Select(e => e.Name)) #>)<#= code.Fragment(joinKeyFluentApiCalls, indent: 6) #>;
+<#
+        var joinEntityTypeFluentApiCalls = joinEntityType.GetFluentApiCalls(annotationCodeGenerator);
+        if (joinEntityTypeFluentApiCalls != null)
+        {
+            usings.AddRange(joinEntityTypeFluentApiCalls.GetRequiredUsings());
+#>
+                    j<#= code.Fragment(joinEntityTypeFluentApiCalls, indent: 6) #>;
+<#
+        }
+
+        foreach (var index in joinEntityType.GetIndexes())
+        {
+            var indexFluentApiCalls = index.GetFluentApiCalls(annotationCodeGenerator);
+            if (indexFluentApiCalls != null)
+            {
+                usings.AddRange(indexFluentApiCalls.GetRequiredUsings());
+            }
+#>
+                    j.HasIndex(<#= code.Literal(index.Properties.Select(e => e.Name).ToArray()) #>, <#= code.Literal(index.GetDatabaseName()) #>)<#= code.Fragment(indexFluentApiCalls, indent: 6) #>;
+<#
+        }
+
+        foreach (var property in joinEntityType.GetProperties())
+        {
+            var propertyFluentApiCalls = property.GetFluentApiCalls(annotationCodeGenerator);
+            if (propertyFluentApiCalls == null)
+            {
+                continue;
+            }
+
+            usings.AddRange(propertyFluentApiCalls.GetRequiredUsings());
+#>
+                    j.IndexerProperty<<#= code.Reference(property.ClrType) #>>(<#= code.Literal(property.Name) #>)<#= code.Fragment(propertyFluentApiCalls, indent: 6) #>;
+<#
+        }
+#>
+                });
+<#
+    }
+#>
+
+        OnConfigurePartial(builder);
+    }
+
+    partial void OnConfigurePartial(EntityTypeBuilder<<#= EntityType.Name #>> builder);
+}
+<#
+    var body = GenerationEnvironment;
+    GenerationEnvironment = new StringBuilder();
+#>
+// <auto-generated>
+//     Generated by scripts/scaffold.ps1 from the database. Do not edit: changes are lost on the next scaffold.
+//     Hand-written configuration goes in Data/Partials (implement OnConfigurePartial).
+// </auto-generated>
+#nullable enable
+
+<#
+    foreach (var ns in usings.Distinct().OrderBy(x => x, new NamespaceComparer()))
+    {
+#>
+using <#= ns #>;
+<#
+    }
+
+    WriteLine("");
+    GenerationEnvironment.Append(body);
+#>

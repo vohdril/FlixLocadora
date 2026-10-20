@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Applies database/schema/*.sql (and database/seed/*.sql with -seed) with DbUp — the Decco.Database pattern:
+    versioned SQL scripts, journal in deploy.SchemaVersions (outside the schema the scaffold reads).
+    It shares the API's UserSecretsId: one `dotnet user-secrets set ConnectionStrings:AppDb ...` serves both.
+    The integration tests reuse DatabaseDeployer to create a throwaway database per run.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>FlixLocadora.Database</RootNamespace>
+    <UserSecretsId>flixlocadora-api-dev</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="dbup-sqlserver" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
+  </ItemGroup>
+
+</Project>
