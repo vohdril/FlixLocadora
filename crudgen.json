@@ -1,0 +1,13 @@
+{
+  // Per-entity decisions the database cannot express (tools/CrudGen/Config.cs).
+  "entities": {
+    // Copies are stock: AvailableCopies is set by the service (= TotalCopies on create) and changed only through
+    // rentals or PATCH /api/movies/{id}/copies — never by a PUT.
+    "Movie": {
+      "excludeFromCreate": [ "AvailableCopies" ],
+      "excludeFromUpdate": [ "TotalCopies", "AvailableCopies" ]
+    },
+    // Rentals are business operations (rent, extend, return, cancel), not a plain CRUD: written by hand.
+    "Rental": { "skip": true }
+  }
+}

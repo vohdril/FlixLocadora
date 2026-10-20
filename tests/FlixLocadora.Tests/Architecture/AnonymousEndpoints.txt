@@ -5,6 +5,8 @@
 # scripts/crudgen.ps1 adds the routes of the slices it creates to the testing phase.
 
 # testing phase — remove at go-live:
+api/movies
+api/customers
 
 # always anonymous:
 api/auth/register
