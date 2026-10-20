@@ -23,3 +23,53 @@ Content-Type: application/json
 ### Who am I (Bearer token)
 GET {{baseUrl}}/api/auth/me
 Authorization: Bearer {{login.response.body.$.data.accessToken}}
+
+### ── Catalog (seed: ./scripts/db-up.ps1 -Seed) ──────────────────────────────
+
+### Movies with a copy to rent right now, by genre
+GET {{baseUrl}}/api/movies?genre=Ação&available=true
+
+### Stock of copies (never below the rented ones → 422 MOVIE_COPIES_IN_USE)
+PATCH {{baseUrl}}/api/movies/6/copies
+Content-Type: application/json
+
+{ "totalCopies": 4 }
+
+### New customer (CPF: 11 digits with valid check digits — 12345678909 is a classic test value)
+POST {{baseUrl}}/api/customers
+Content-Type: application/json
+
+{ "name": "Gabriela Exemplo", "email": "Gabriela@Example.com", "cpf": "12345678909", "phone": "(11) 98765-0007" }
+
+### ── Rentals ─────────────────────────────────────────────────────────────────
+
+### Rent (the last copy is decided by the database)
+# @name rent
+POST {{baseUrl}}/api/rentals
+Content-Type: application/json
+
+{ "movieId": 6, "customerId": 5, "days": 3 }
+
+### Customer 2 has an overdue rental in the seed → 422 CUSTOMER_HAS_OVERDUE_RENTALS
+POST {{baseUrl}}/api/rentals
+Content-Type: application/json
+
+{ "movieId": 6, "customerId": 2, "days": 1 }
+
+### Overdue rentals (status is derived from the dates)
+GET {{baseUrl}}/api/rentals?status=Overdue
+
+### History of a customer
+GET {{baseUrl}}/api/customers/1/rentals
+
+### Extend to 5 days from now (UTC; up to Rental:MaxDays after the rental; an overdue rental cannot be extended)
+PUT {{baseUrl}}/api/rentals/{{rent.response.body.$.data.id}}
+Content-Type: application/json
+
+{ "dueAt": "{{$datetime iso8601 5 d}}" }
+
+### Return: late fee and total
+POST {{baseUrl}}/api/rentals/{{rent.response.body.$.data.id}}/return
+
+### Cancel (only within Rental:CancelWindowMinutes of the rental)
+DELETE {{baseUrl}}/api/rentals/{{rent.response.body.$.data.id}}

@@ -1,3 +1,6 @@
+using FlixLocadora.Api.Business.Customers;
+using FlixLocadora.Api.Business.Movies;
+
 namespace FlixLocadora.Tests.Support;
 
 /// <summary>Fictitious data. The check digits are computed here independently of the production code.</summary>
@@ -26,6 +29,14 @@ public static class TestData
 
     /// <summary>A unique e-mail of the example.com domain (reserved for documentation, never delivered).</summary>
     public static string NewEmail(string prefix = "user") => $"{prefix}.{Interlocked.Increment(ref _sequence)}@tests.example.com";
+
+    /// <summary>A movie with an invented title (no real catalog data).</summary>
+    public static CreateMovieRequest NewMovie(int totalCopies = 1, decimal dailyRate = 4.00m, string genre = "Drama")
+        => new($"Filme de Teste {Interlocked.Increment(ref _sequence)}", genre, 2020, 4, null, dailyRate, totalCopies);
+
+    /// <summary>A customer with a generated CPF and an example.com e-mail.</summary>
+    public static CreateCustomerRequest NewCustomer()
+        => new($"Cliente de Teste {Interlocked.Increment(ref _sequence)}", NewEmail("cliente"), NewCpf(), "11987654321");
 
     // Each character is worth its ASCII code minus 48 (digits 0-9; letters of the alphanumeric CNPJ from 17).
     private static int Modulus11(string value, int[] weights)

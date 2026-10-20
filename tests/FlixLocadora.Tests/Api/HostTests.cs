@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FlixLocadora.Api.Business.Common;
 using FlixLocadora.Tests.Support;
 
@@ -32,6 +33,32 @@ public class HostTests(ApiFixture fixture)
         Assert.Contains("\"ApiResponse\"", document);                       // StandardResponsesTransformer: 400/404/500 with the envelope
         Assert.Contains("Checks the password", document);                   // XML comments → OpenAPI (.NET 10)
         Assert.Contains("\"bearerFormat\": \"JWT\"", document);              // BearerSecuritySchemeTransformer
+    }
+
+    [Fact]
+    public async Task Dates_are_strings_in_the_openapi_contract()
+    {
+        using var client = fixture.CreateClient();
+        using var document = JsonDocument.Parse(await client.GetStringAsync("/openapi/v1.json"));
+
+        var rentedAt = document.RootElement.GetProperty("components").GetProperty("schemas")
+            .GetProperty("RentalResponse").GetProperty("properties").GetProperty("rentedAt");
+
+        Assert.Equal(("string", "date-time"), (rentedAt.GetProperty("type").GetString(), rentedAt.GetProperty("format").GetString()));
+    }
+
+    [Fact]
+    public void Invalid_shop_rules_stop_the_api_at_startup()
+    {
+        using var factory = new ApiFactory(fixture.ConnectionString, new Dictionary<string, string?>
+        {
+            ["Auth:SeedOnStartup"] = "false",
+            ["Rental:MaxDays"] = "0",
+        });
+
+        var error = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+
+        Assert.Contains("RentalOptions.MaxDays", error.ToString());
     }
 
     [Fact]

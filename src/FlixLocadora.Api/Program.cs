@@ -20,6 +20,7 @@ builder.Services
     .AddApiInfrastructure(builder.Configuration)
     .AddDataLayer(builder.Configuration)
     .AddIdentityAuth(builder.Environment)
+    .AddDomainOptions()
     .RegisterDependencies();
 
 var app = builder.Build();

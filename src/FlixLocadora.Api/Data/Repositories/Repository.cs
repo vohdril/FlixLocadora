@@ -34,6 +34,14 @@ public interface IRepository<TEntity> : IRepository
     /// </summary>
     void ExpectVersion(TEntity entity, byte[] rowVersion);
 
+    /// <summary>
+    /// Pessimistic lock of ONE row: loads the entity (tracked) and keeps its row locked (UPDLOCK) until the
+    /// transaction ends — a second caller waits and then reads the committed value, instead of both deciding on the
+    /// same old value (a double-click on "return" would put the copy back twice). Only inside IUnitOfWork.InTransactionAsync.
+    /// </summary>
+    Task<TEntity?> FindForUpdateAsync<TKey>(TKey key, CancellationToken ct)
+        where TKey : notnull;
+
     void Add(TEntity entity);
 
     void Remove(TEntity entity);
@@ -78,6 +86,19 @@ public class Repository<TEntity>(AppDbContext db) : IRepository<TEntity>
             ?? throw new InvalidOperationException($"{typeof(TEntity).Name} has no concurrency token (rowversion column).");
 
         Db.Entry(entity).Property(token.Name).OriginalValue = rowVersion;
+    }
+
+    public Task<TEntity?> FindForUpdateAsync<TKey>(TKey key, CancellationToken ct)
+        where TKey : notnull
+    {
+        if (Db.Database.CurrentTransaction is null)
+            throw new InvalidOperationException("FindForUpdateAsync holds the lock until the transaction ends: call it inside IUnitOfWork.InTransactionAsync.");
+
+        // The table name comes from the EF model, never from input. ROWLOCK + the primary-key seek lock only this row.
+        var entityType = Db.Model.FindEntityType(typeof(TEntity))!;
+        var sql = "SELECT * FROM [" + entityType.GetSchema() + "].[" + entityType.GetTableName() + "] WITH (UPDLOCK, ROWLOCK)";
+
+        return WhereKey(Set.FromSqlRaw(sql), key).FirstOrDefaultAsync(ct);
     }
 
     public void Add(TEntity entity) => Set.Add(entity);

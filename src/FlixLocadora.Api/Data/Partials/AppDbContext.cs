@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace FlixLocadora.Api.Data;
 
@@ -37,4 +38,16 @@ public partial class AppDbContext : IUnitOfWork
     }
 
     public void ClearChangeTracker() => ChangeTracker.Clear();
+
+    /// <summary>
+    /// Every date-time of this database is UTC (sysutcdatetime(), TimeProvider), but datetime2 has no kind: EF would
+    /// read Unspecified and the JSON would go out WITHOUT the "Z" — a client in UTC-3 would show it 3 hours off.
+    /// Done here, not in a JSON converter: a custom converter erases "type: string" from the OpenAPI schema.
+    /// </summary>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        => configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+
+    private sealed class UtcDateTimeConverter() : ValueConverter<DateTime, DateTime>(
+        value => value.Kind == DateTimeKind.Local ? value.ToUniversalTime() : value,
+        value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
 }

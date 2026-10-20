@@ -1,7 +1,9 @@
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.DependencyInjection;
 using FlixLocadora.Api.Business.Auth;
+using FlixLocadora.Api.Data;
 using FlixLocadora.Database;
 
 namespace FlixLocadora.Tests.Support;
@@ -61,6 +63,13 @@ public sealed class ApiFixture : IAsyncLifetime
     }
 
     public Task<string> LoginAsAdminAsync() => LoginAsync(AdminEmail, AdminPassword);
+
+    /// <summary>Arranges what the API refuses on purpose (e.g. a rental made days ago) straight in the test database.</summary>
+    public async Task ArrangeAsync(Func<AppDbContext, Task> arrange)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        await arrange(scope.ServiceProvider.GetRequiredService<AppDbContext>());
+    }
 
     /// <summary>Registers a new user (default role Operator) and returns its token.</summary>
     public async Task<(string Email, string Token)> NewOperatorAsync()
